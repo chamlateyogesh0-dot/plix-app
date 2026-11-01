@@ -6,7 +6,7 @@ import os
 import shutil
 import httpx
 from sqlalchemy.orm import Session
-from scraper.scraper_engine import SmartFetchEngine
+from scraper_engine import SmartFetchEngine
 from database import init_db, get_db
 from models import TrackedProduct, StoreResult
 
