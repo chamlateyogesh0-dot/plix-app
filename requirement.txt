@@ -5,3 +5,4 @@ httpx
 sqlalchemy
 jinja2
 playwright
+beautifulsoup4
