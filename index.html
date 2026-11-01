@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plix - Smart Price Tracker & Comparison | YantraLabs</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: 'Inter', sans-serif; }
+        .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .brand-gradient { background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); }
+        #gameCanvas { background: #020617; border-radius: 12px; cursor: pointer; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between pb-12">
+
+    <div>
+        <!-- Top Navbar -->
+        <header class="sticky top-0 z-50 glass-card border-b border-slate-800 px-6 py-4 mb-8">
+            <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+                
+                <!-- Brand Logo (Using logo.png from templates folder) -->
+                <div class="flex items-center gap-3">
+                    <img src="/static/logo.png" alt="Plix Logo" class="w-10 h-10 object-contain rounded-xl shadow-lg shadow-indigo-500/20">
+                    <div>
+                        <span class="text-2xl font-extrabold tracking-tight text-white">Plix<span class="text-indigo-400">.ai</span></span>
+                        <span class="block text-[10px] text-slate-400 tracking-wider uppercase font-semibold">by YantraLabs</span>
+                    </div>
+                </div>
+
+                <!-- Primary Search Bar & Action -->
+                <div class="flex items-center gap-3 w-full md:w-auto flex-1 max-w-2xl">
+                    <div class="relative w-full">
+                        <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="text" id="productUrlInput" placeholder="Paste Amazon/Flipkart/Meesho product link or search item..." 
+                            class="w-full pl-11 pr-12 py-3 bg-slate-900/80 border border-slate-700/80 rounded-xl focus:outline-none focus:border-indigo-500 text-sm placeholder-slate-500 transition">
+                        
+                        <!-- Image Upload Icon Button -->
+                        <label for="imageUpload" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-400 cursor-pointer p-1 transition" title="Search with Image">
+                            <i class="fa-solid fa-camera text-lg"></i>
+                        </label>
+                        <input type="file" id="imageUpload" accept="image/*" class="hidden">
+                    </div>
+
+                    <button id="scrapeBtn" onclick="compareAndTrack()" class="brand-gradient hover:opacity-95 text-white font-semibold px-6 py-3 rounded-xl shadow-lg shadow-indigo-500/25 transition whitespace-nowrap text-sm flex items-center gap-2">
+                        <i class="fa-solid fa-bolt"></i> Compare & Track
+                    </button>
+                </div>
+
+            </div>
+        </header>
+
+        <!-- Main Content Container -->
+        <main class="max-w-7xl mx-auto px-6 space-y-8">
+
+            <!-- Active Search & Analysis / Result Section -->
+            <section class="glass-card rounded-2xl p-6 border border-slate-800 shadow-2xl relative overflow-hidden">
+                <div class="flex items-center justify-between mb-4 border-b border-slate-800 pb-3">
+                    <h2 class="text-lg font-bold text-slate-200 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-line text-indigo-400"></i> Active Search & Analysis
+                    </h2>
+                    <span id="statusBadge" class="text-xs bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full border border-emerald-500/20 font-medium">Ready</span>
+                </div>
+                
+                <!-- Result Display Container (Multi-Platform Grid Support) -->
+                <div id="resultCard">
+                    <p class="text-sm text-slate-400">Paste any product link or search query above to fetch live prices across Amazon, Flipkart, and Meesho.</p>
+                </div>
+
+                <!-- Interactive Catch the Price Drop Game (Shown during scraping wait times) -->
+                <div id="miniGameContainer" class="hidden mt-4 p-4 rounded-xl bg-slate-900/80 border border-indigo-500/30 text-center">
+                    <div class="flex items-center justify-between mb-3 px-2">
+                        <span class="text-xs text-indigo-400 font-semibold flex items-center gap-2">
+                            <i class="fa-solid fa-gamepad"></i> Catch the Falling Discounts!
+                        </span>
+                        <span id="gameScore" class="text-xs font-bold bg-indigo-500/20 text-indigo-300 px-3 py-1 rounded-full border border-indigo-500/30">
+                            Deals Caught: 0
+                        </span>
+                    </div>
+                    
+                    <canvas id="gameCanvas" width="400" height="180" class="mx-auto border border-slate-800 w-full max-w-md"></canvas>
+                    <p class="text-[11px] text-slate-500 mt-2">Move mouse or drag left/right to move the basket!</p>
+                </div>
+            </section>
+
+            <!-- Dedicated Configuration Section (Target Price & Telegram Chat ID) -->
+            <section class="glass-card rounded-2xl p-6 border border-slate-800 shadow-xl">
+                <div class="mb-4">
+                    <h3 class="text-md font-semibold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-indigo-400"></i> Watchlist Alert Preferences
+                    </h3>
+                    <p class="text-xs text-slate-400 mt-1">Configure your price drop threshold and Telegram App ID before adding items to your watchlist.</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Target Price Input -->
+                    <div class="flex flex-col gap-1.5">
+                        <label for="targetPrice" class="text-xs font-medium text-slate-300">Target Price Threshold (₹)</label>
+                        <div class="relative">
+                            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 font-bold">₹</span>
+                            <input type="number" id="targetPrice" placeholder="e.g. 14999" 
+                                class="w-full pl-8 pr-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-indigo-500 text-white placeholder-slate-600">
+                        </div>
+                    </div>
+
+                    <!-- Telegram/App ID Input -->
+                    <div class="flex flex-col gap-1.5">
+                        <label for="telegramId" class="text-xs font-medium text-slate-300">Telegram App ID / Chat ID</label>
+                        <div class="relative">
+                            <i class="fa-solid fa-paper-plane absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                            <input type="text" id="telegramId" placeholder="e.g. @your_telegram_id" 
+                                class="w-full pl-10 pr-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-indigo-500 text-white placeholder-slate-600">
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Watchlist Section -->
+            <section class="glass-card rounded-2xl p-6 border border-slate-800 shadow-xl">
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-bookmark text-indigo-400"></i> Tracked Watchlist
+                        </h3>
+                        <p class="text-xs text-slate-400 mt-1">Background Celery workers continuously monitor prices for items listed below.</p>
+                    </div>
+                    <span id="watchlistCount" class="text-xs text-slate-400 bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700">0 Items</span>
+                </div>
+
+                <div id="watchlistContainer" class="flex flex-col items-center justify-center py-12 border-2 border-dashed border-slate-800 rounded-xl text-center">
+                    <div class="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center mb-3 text-slate-500">
+                        <i class="fa-solid fa-list-check text-xl"></i>
+                    </div>
+                    <p class="text-sm font-medium text-slate-300">Your watchlist is currently empty</p>
+                    <p class="text-xs text-slate-500 mt-1">Search for a product above and click "Compare & Track" to start monitoring.</p>
+                </div>
+            </section>
+
+        </main>
+    </div>
+    <!-- Feedback Section -->
+        <section class="glass-card rounded-2xl p-6 border border-slate-800 shadow-xl mt-8">
+            <div class="mb-4">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-star text-amber-400"></i> Drop Your Feedback
+                </h3>
+                <p class="text-xs text-slate-400 mt-1">App ke baare me apna review aur rating dein, yeh direct mere local database me save hoga!</p>
+            </div>
+            
+            <div class="space-y-4">
+                <!-- Interactive Star Rating -->
+                <div class="flex items-center gap-2">
+                    <span class="text-xs text-slate-300 font-medium mr-2">Rating:</span>
+                    <i class="fa-solid fa-star text-amber-400 cursor-pointer text-xl transition star-btn" data-value="1" onclick="setRating(1)"></i>
+                    <i class="fa-solid fa-star text-amber-400 cursor-pointer text-xl transition star-btn" data-value="2" onclick="setRating(2)"></i>
+                    <i class="fa-solid fa-star text-amber-400 cursor-pointer text-xl transition star-btn" data-value="3" onclick="setRating(3)"></i>
+                    <i class="fa-solid fa-star text-amber-400 cursor-pointer text-xl transition star-btn" data-value="4" onclick="setRating(4)"></i>
+                    <i class="fa-solid fa-star text-amber-400 cursor-pointer text-xl transition star-btn" data-value="5" onclick="setRating(5)"></i>
+                    <span id="ratingText" class="text-xs text-amber-400 font-bold ml-2">5/5</span>
+                </div>
+
+                <!-- Message Textbox -->
+                <div>
+                    <textarea id="feedbackMessage" rows="3" placeholder="Apna message ya sujhav yahan likhein..." 
+                        class="w-full p-3 bg-slate-900 border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-indigo-500 text-white placeholder-slate-600 resize-none"></textarea>
+                </div>
+
+                <button onclick="submitFeedback()" class="brand-gradient hover:opacity-95 text-white font-semibold px-5 py-2.5 rounded-xl shadow-lg shadow-indigo-500/20 text-xs transition flex items-center gap-2">
+                    <i class="fa-solid fa-paper-plane"></i> Submit Feedback
+                </button>
+            </div>
+        </section>
+
+    <!-- Professional Dark Footer with YantraLabs Branding & Contact -->
+    <footer class="glass-card border-t border-slate-800 py-10 px-6 mt-16 text-slate-400">
+        <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 items-center text-sm">
+            
+            <!-- Brand & Service Info -->
+            <div>
+                <div class="flex items-center gap-2 text-white font-bold text-lg mb-2">
+                    <img src="/static/logo.png" alt="Plix Logo" class="w-6 h-6 object-contain rounded">
+                    <span>Plix.ai Engine</span>
+                </div>
+                <p class="text-xs text-slate-400 leading-relaxed">
+                    Smart automated multi-platform price tracking & comparison system powered by FastAPI, Celery, and advanced web scrapers. Developed for lightning-fast deal intelligence.
+                </p>
+            </div>
+
+            <!-- Contact & Developer Info (YantraLabs) -->
+            <div class="flex flex-col gap-1.5 md:text-center">
+                <span class="text-white font-semibold text-xs tracking-wider uppercase">Developed By YantraLabs</span>
+                <span class="text-xs text-slate-300">Lead Developer: Chaitanya chamlate</span>
+                <div class="flex md:justify-center items-center gap-4 mt-1 text-xs">
+                    <a href="tel:+91-9028647873" class="hover:text-indigo-400 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-phone text-indigo-400"></i> +91 90286 47873
+                    </a>
+                    <a href="https://wa.me/91-9028647873" target="_blank" class="hover:text-emerald-400 transition flex items-center gap-1.5">
+                        <i class="fa-brands fa-whatsapp text-emerald-400"></i> WhatsApp - 9028647873
+                    </a>
+                </div>
+            </div>
+
+            <!-- Copyright & Status -->
+            <div class="flex flex-col md:items-end gap-2 text-xs text-slate-500">
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span class="text-slate-400">Celery Worker Live &bull; SQLite Broker</span>
+                </div>
+                <p>&copy; 2026 YantraLabs &bull; All Rights Reserved.</p>
+            </div>
+
+        </div>
+    </footer>
+
+    <!-- Frontend JavaScript Logic -->
+    <script>
+        // Catch the Price Drop Canvas Game Logic
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        let gameInterval, basketX = 175, score = 0, items = [];
+
+        function startCatchGame() {
+            score = 0;
+            items = [];
+            basketX = canvas.width / 2 - 25;
+            document.getElementById('gameScore').innerText = `Deals Caught: 0`;
+
+            canvas.onmousemove = (e) => {
+                const rect = canvas.getBoundingClientRect();
+                basketX = e.clientX - rect.left - 25;
+            };
+
+            canvas.ontouchmove = (e) => {
+                const rect = canvas.getBoundingClientRect();
+                basketX = e.touches[0].clientX - rect.left - 25;
+            };
+
+            gameInterval = setInterval(updateGame, 20);
+        }
+
+        function stopCatchGame() {
+            clearInterval(gameInterval);
+        }
+
+        function updateGame() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Spawn falling discount coins
+            if (Math.random() < 0.05) {
+                items.push({ x: Math.random() * (canvas.width - 20), y: 0, speed: 2 + Math.random() * 2 });
+            }
+
+            // Draw Basket
+            ctx.fillStyle = '#6366f1';
+            ctx.fillRect(basketX, canvas.height - 15, 50, 10);
+
+            // Update & Draw Items
+            for (let i = 0; i < items.length; i++) {
+                let item = items[i];
+                item.y += item.speed;
+
+                ctx.fillStyle = '#10b981';
+                ctx.beginPath();
+                ctx.arc(item.x, item.y, 8, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Check collision
+                if (item.y >= canvas.height - 20 && item.x >= basketX && item.x <= basketX + 50) {
+                    score++;
+                    document.getElementById('gameScore').innerText = `Deals Caught: ${score}`;
+                    items.splice(i, 1);
+                    i--;
+                } else if (item.y > canvas.height) {
+                    items.splice(i, 1);
+                    i--;
+                }
+            }
+        }
+        let currentRating = 5;
+        function setRating(val) {
+            currentRating = val;
+            document.getElementById('ratingText').innerText = `${val}/5`;
+            const stars = document.querySelectorAll('.star-btn');
+            stars.forEach((star, index) => {
+                if (index < val) {
+                    star.classList.remove('text-slate-600');
+                    star.classList.add('text-amber-400');
+                } else {
+                    star.classList.remove('text-amber-400');
+                    star.classList.add('text-slate-600');
+                }
+            });
+        }
+
+        async function submitFeedback() {
+            const message = document.getElementById('feedbackMessage').value.trim();
+            if (!message) {
+                alert('Bhai, kripya kuch message toh type karein!');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/feedback', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ rating: currentRating, message: message })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    alert('Feedback successfully tere computer ke database me save ho gaya! Shukriya bhai.');
+                    document.getElementById('feedbackMessage').value = '';
+                    setRating(5);
+                } else {
+                    alert('Feedback save karne me error aaya.');
+                }
+            } catch (err) {
+                alert('Backend API se connect nahi ho paya.');
+            }
+        }
+
+        // Multi-Platform Backend Scraping & Grid Rendering Function
+        async function compareAndTrack() {
+            const urlInput = document.getElementById('productUrlInput').value.trim();
+            const targetPrice = document.getElementById('targetPrice').value;
+            const telegramId = document.getElementById('telegramId').value.trim();
+            const resultCard = document.getElementById('resultCard');
+            const badge = document.getElementById('statusBadge');
+            const miniGame = document.getElementById('miniGameContainer');
+
+            if (!urlInput) {
+                alert('Bhai, kripya product ka URL ya specific model name enter karein!');
+                return;
+            }
+
+            badge.className = 'text-xs bg-amber-500/10 text-amber-500 px-3 py-1 rounded-full border border-amber-500/20 font-medium animate-pulse';
+            badge.innerText = 'Scraping Live...';
+            miniGame.classList.remove('hidden');
+            startCatchGame();
+
+            try {
+                const response = await fetch('/api/scrape', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        url: urlInput, 
+                        target_price: parseFloat(targetPrice) || 0, 
+                        telegram_chat_id: telegramId 
+                    })
+                });
+
+                const data = await response.json();
+
+                stopCatchGame();
+                miniGame.classList.add('hidden');
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Scraping failed');
+                }
+
+                badge.className = `text-xs bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full border border-emerald-500/20 font-medium`;
+                badge.innerText = data.ai_decision.badge;
+
+                // Render AI Verdict & Multi-Store Grid Cards
+                resultCard.innerHTML = `
+                    <div class="mb-4 p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-xs text-slate-300 flex items-center justify-between">
+                        <span><i class="fa-solid fa-robot text-indigo-400 mr-1.5"></i> ${data.ai_decision.message}</span>
+                        <span class="font-bold uppercase text-emerald-400">${data.ai_decision.verdict}</span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+                `;
+                const gridContainer = resultCard.querySelector('.grid');
+
+                data.results.forEach(item => {
+                    const cardHtml = `
+                        <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800 flex flex-col justify-between gap-3 shadow-lg">
+                            <div>
+                                <span class="text-[10px] uppercase tracking-wider text-indigo-400 font-bold bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">${item.platform}</span>
+                                <h4 class="text-sm font-bold text-white mt-2 line-clamp-2">${item.title}</h4>
+                            </div>
+                            <div>
+                                <p class="text-xl font-black text-emerald-400">₹${item.price > 0 ? item.price.toLocaleString('en-IN') : 'N/A'}</p>
+                                <span class="text-[11px] text-slate-400">Status: ${item.status}</span>
+                            </div>
+                            <div class="flex items-center gap-2 pt-2 border-t border-slate-800">
+                                <a href="${item.url}" target="_blank" class="flex-1 text-center py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold rounded-lg border border-slate-700 transition">
+                                    Open <i class="fa-solid fa-external-link-alt ml-1"></i>
+                                </a>
+                                <button onclick="addToWatchlist()" class="flex-1 py-2 brand-gradient text-white text-xs font-semibold rounded-lg shadow transition">
+                                    Track
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    gridContainer.innerHTML += cardHtml;
+                });
+
+            } catch (error) {
+                stopCatchGame();
+                miniGame.classList.add('hidden');
+                badge.className = 'text-xs bg-rose-500/10 text-rose-500 px-3 py-1 rounded-full border border-rose-500/20 font-medium';
+                badge.innerText = 'Error';
+                resultCard.innerHTML = `<p class="text-sm text-rose-400 font-medium"><i class="fa-solid fa-triangle-exclamation"></i> ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>
