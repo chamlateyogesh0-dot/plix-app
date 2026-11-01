@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
-from app.database import Base
+from database import Base
 
 class TrackedProduct(Base):
     __tablename__ = "tracked_products"
