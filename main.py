@@ -6,9 +6,9 @@ import os
 import shutil
 import httpx
 from sqlalchemy.orm import Session
-from app.scraper.scraper_engine import SmartFetchEngine
-from app.database import init_db, get_db
-from app.models import TrackedProduct, StoreResult
+from scraper.scraper_engine import SmartFetchEngine
+from database import init_db, get_db
+from models import TrackedProduct, StoreResult
 
 app = FastAPI(title="Plix - Intelligent Price Tracking")
 
