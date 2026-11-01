@@ -1,8 +1,8 @@
 import urllib.parse
 import asyncio
-from app.scraper.amazon_scraper import AmazonScraper
-from app.scraper.flipkart_scraper import FlipkartScraper
-from app.scraper.meesho_scraper import MeeshoScraper
+from scraper.amazon_scraper import AmazonScraper
+from scraper.flipkart_scraper import FlipkartScraper
+from scraper.meesho_scraper import MeeshoScraper
 
 class SmartFetchEngine:
     def __init__(self):
