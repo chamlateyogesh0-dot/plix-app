@@ -1,5 +1,5 @@
-from app.celery_app import celery_app
-from app.scraper.scraper_engine import SmartFetchEngine
+from celery_app import celery_app
+from scraper.scraper_engine import SmartFetchEngine
 import asyncio
 import os
 import httpx
