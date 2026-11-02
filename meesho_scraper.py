@@ -2,7 +2,7 @@
 import re
 import asyncio
 from bs4 import BeautifulSoup
-from scraper.base_scraper import BaseScraper
+from base_scraper import BaseScraper
 
 class MeeshoScraper(BaseScraper):
     async def scrape(self, url: str):
