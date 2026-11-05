@@ -6,3 +6,4 @@ sqlalchemy
 jinja2
 playwright
 beautifulsoup4
+python-multipart
