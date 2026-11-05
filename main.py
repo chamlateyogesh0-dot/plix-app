@@ -166,7 +166,7 @@ def delete_watchlist_item(item_id: int, db: Session = Depends(get_db)):
     return {"success": True, "message": "Deleted successfully"}
 from sqlalchemy import Column, Integer, String, DateTime
 from datetime import datetime
-from app.database import Base
+from database import Base
 
 # 1. Feedback Database Model (Appends to local SQLite)
 class FeedbackModel(Base):
