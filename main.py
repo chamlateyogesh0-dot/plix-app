@@ -7,15 +7,31 @@ import shutil
 import httpx
 from sqlalchemy.orm import Session
 from scraper_engine import SmartFetchEngine
-from database import init_db, get_db
+from database import init_db, get_db, Base, engine as db_engine
 from models import TrackedProduct, StoreResult
+from datetime import datetime
+from sqlalchemy import Column, Integer, String, DateTime
 
 app = FastAPI(title="Plix - Intelligent Price Tracking")
 
-# Initialize database on startup
+# 1. Feedback Database Model
+class FeedbackModel(Base):
+    __tablename__ = "feedbacks"
+    id = Column(Integer, primary_key=True, index=True)
+    rating = Column(Integer, default=5)
+    message = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class FeedbackRequest(BaseModel):
+    rating: int
+    message: str
+
+# Initialize database tables on startup
 @app.on_event("startup")
 async def startup_event():
     init_db()
+    # Ensure feedback table is created if using separate Base
+    FeedbackModel.__table__.create(bind=db_engine, checkfirst=True)
 
 templates = Jinja2Templates(directory="templates")
 os.makedirs("static/uploads", exist_ok=True)
@@ -35,7 +51,6 @@ async def send_telegram_alert(chat_id: str, message: str):
         except Exception:
             return False
 
-# Pydantic Request Model
 class ScrapeRequest(BaseModel):
     url: str
     target_price: float = 0.0
@@ -76,12 +91,10 @@ def generate_ai_decision(prices: list) -> dict:
 async def read_root(request: Request):
     return templates.TemplateResponse(request=request, name="index.html", context={})
 
-# SINGLE, UNIFIED & BULLETPROOF SCRAPE ENDPOINT (Duplicates Removed)
 @app.post("/api/scrape")
 async def scrape_endpoint(request: ScrapeRequest, db: Session = Depends(get_db)):
     input_text = request.url.strip()
     
-    # Generic keyword block check
     if input_text.lower() in GENERIC_CATEGORIES:
         raise HTTPException(
             status_code=400, 
@@ -93,7 +106,6 @@ async def scrape_endpoint(request: ScrapeRequest, db: Session = Depends(get_db))
         prices = [r.get("price", 0.0) for r in results]
         ai_advice = generate_ai_decision(prices)
         
-        # Save to SQLite Database (Watchlist / History)
         db_product = TrackedProduct(search_query=input_text)
         db.add(db_product)
         db.commit()
@@ -111,7 +123,6 @@ async def scrape_endpoint(request: ScrapeRequest, db: Session = Depends(get_db))
             db.add(db_result)
         db.commit()
 
-        # Telegram Alert
         if request.telegram_chat_id:
             min_p = min([p for p in prices if p > 0], default=0)
             msg = f"🔔 *Plix Price Alert*\n📦 Product: `{input_text}`\n💰 Best Price: ₹{min_p:,.2f}\n💡 Verdict: *{ai_advice['verdict']}*"
@@ -156,37 +167,13 @@ async def delete_watchlist_item(product_id: int, db: Session = Depends(get_db)):
     db.delete(product)
     db.commit()
     return {"success": True, "message": "Item deleted from watchlist"}
-@app.delete("/api/watchlist/{item_id}")
-def delete_watchlist_item(item_id: int, db: Session = Depends(get_db)):
-    item = db.query(TrackedProduct).filter(TrackedProduct.id == item_id).first()
-    if not item:
-        raise HTTPException(status_code=404, detail="Item not found")
-    db.delete(item)
-    db.commit()
-    return {"success": True, "message": "Deleted successfully"}
-from sqlalchemy import Column, Integer, String, DateTime
-from datetime import datetime
-from database import Base
 
-# 1. Feedback Database Model (Appends to local SQLite)
-class FeedbackModel(Base):
-    __tablename__ = "feedbacks"
-    id = Column(Integer, primary_key=True, index=True)
-    rating = Column(Integer, default=5)
-    message = Column(String, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-class FeedbackRequest(BaseModel):
-    rating: int
-    message: str
-
-# 2. API Endpoint to Receive and Save Feedback Locally
 @app.post("/api/feedback")
 async def save_feedback(data: FeedbackRequest, db: Session = Depends(get_db)):
     try:
         new_feedback = FeedbackModel(rating=data.rating, message=data.message)
         db.add(new_feedback)
         db.commit()
-        return {"success": True, "message": "Feedback saved locally on computer!"}
+        return {"success": True, "message": "Feedback saved successfully!"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
