@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Request, UploadFile, File, Depends
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import os
 import shutil
@@ -12,6 +13,15 @@ from datetime import datetime
 from sqlalchemy import Column, Integer, String, DateTime
 
 app = FastAPI(title="Plix - Intelligent Price Tracking")
+
+# Enable CORS for Frontend (Netlify) integration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows requests from any frontend origin (like plixs.site)
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all HTTP methods (GET, POST, DELETE, etc.)
+    allow_headers=["*"],  # Allows all headers
+)
 
 # 1. Feedback Database Model
 class FeedbackModel(Base):
