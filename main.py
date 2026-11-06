@@ -1,5 +1,4 @@
 from fastapi import FastAPI, HTTPException, Request, UploadFile, File, Depends
-from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import os
@@ -30,10 +29,8 @@ class FeedbackRequest(BaseModel):
 @app.on_event("startup")
 async def startup_event():
     init_db()
-    # Ensure feedback table is created if using separate Base
     FeedbackModel.__table__.create(bind=db_engine, checkfirst=True)
 
-templates = Jinja2Templates(directory="templates")
 os.makedirs("static/uploads", exist_ok=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -88,8 +85,8 @@ def generate_ai_decision(prices: list) -> dict:
         }
 
 @app.get("/")
-async def read_root(request: Request):
-    return templates.TemplateResponse(request=request, name="index.html", context={})
+async def read_root():
+    return {"status": "Online", "message": "Plix Backend is running successfully!"}
 
 @app.post("/api/scrape")
 async def scrape_endpoint(request: ScrapeRequest, db: Session = Depends(get_db)):
